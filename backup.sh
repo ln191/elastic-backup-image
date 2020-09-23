@@ -3,18 +3,41 @@
 # functions
     # curator check repo
     # check there is a log 
-    # decrypt
-    # encrypt
+# decrypt
+decrypt()
+{
+    gpg --batch --passphrase $PASSWORD -o $1 -d $1
+
+    echo "Succesfully decrypting file $1"
+}
+# encrypt
+encrypt()
+{
+    # sync encryption
+    gpg --batch -c --passphrase $PASSWORD --armor --symmetric --cipher-algo AES256 $1
+
+    echo "Successfully Encrypted file: $1"
+}
     # wait for status
+cd /var/nfs
 
 if [ "backup" = $STATE ]; then
     echo "Running Backup cmd..."
     
-    # encryption log file if none create one
-
-    # Decrypt indies folder content
-        # read file name from log file
+    # check encryption log file if none create one
+    if [ -e /var/nfs/encryptionLog.txt ]
+    then
+        echo "encryption Log found"
         # foreach file in log file decrypt
+        while read in 
+        do 
+            decrypt "$in"; 
+        done < encryptionLog.txt
+        > encryptionLog.txt
+    else
+        echo "no encryption log found, creating log"
+        touch /var/nfs/encryptionLog.txt
+    fi
 
     # Run curator backup cmd
         # check repo exist if not create
@@ -24,41 +47,26 @@ if [ "backup" = $STATE ]; then
         # timeout error if to long
 
         # if error exit with error
-    
+
+    # find files to be encrypted
+    ls /var/nfs/$search_path > tempList.txt
+
     # encrypt indies folder content
+    # while read in 
+    # do 
+    #     encrypt "$in"; 
+    #     echo "$in" >> encryptionLog.txt
+    # done < tempList.txt
 
-    # if no errors exit succesfull
+    # rm tempList.txt
+    # # if no errors exit succesfull
 
-    DUMP_FILE_NAME="${DBAPP}-$(date +$DATEFORMAT).dump"
-    echo "time format: $(date +$DATEFORMAT)"
-    echo "Creating dump: $DUMP_FILE_NAME"
+    # if [ $? -ne 0 ]; then
+    #     echo "Back up failed"
+    #     exit 1
+    # fi
 
-    # dump sql db
-    pg_dump -Fc $PGDATABASE > $DUMP_FILE_NAME
-
-    if [ $? -ne 0 ]; then
-        echo "Back up not created, check db connection settings"
-        exit 1
-    fi
-
-    echo 'Successfully Backed Up'
-
-    # sync encryption
-    gpg --batch -c --passphrase $PASSWORD --armor --symmetric --cipher-algo AES256 $DUMP_FILE_NAME
-
-    echo "Successfully Encrypted dump file: ${DUMP_FILE_NAME}"
-
-    # move backup file
-    ssh $REMOTEUSER@$REMOTEIP mkdir $STORAGEPATH/$NAMESPACE
-    ssh $REMOTEUSER@$REMOTEIP mkdir $STORAGEPATH/$NAMESPACE/$DBAPP
-    scp $DUMP_FILE_NAME.asc $REMOTEUSER@$REMOTEIP:$STORAGEPATH/$NAMESPACE/$DBAPP
-
-    if [ $? -ne 0 ]; then
-        echo "Back up could not be move to storage, check scp connection to ${REMOTEUSER}@${$REMOTEIP}"
-        exit 1
-    fi
-
-    echo 'Successfully pushed to backup storage'
+    echo 'Successfully Backup of elastic logs'
     exit 0
 fi
 

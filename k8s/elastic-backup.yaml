@@ -22,6 +22,10 @@ spec:
       volumeMounts:
         - name: nfs-volume
           mountPath: /var/nfs
-      # Write to a file inside our NFS
-      command: ["/bin/sh"]
-      args: ["-c", "while true; do date >> /var/nfs/dates.txt; sleep 5; done"]
+      env:
+      - name: PASSWORD
+        value: test
+      - name: STATE
+        value: backup
+      - name: search_path
+        vaule: indies
