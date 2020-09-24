@@ -1,31 +1,35 @@
 # Create a pod that reads and writes to the
 # NFS server via an NFS volume.
 
-kind: Pod
-apiVersion: v1
+kind: Job
+apiVersion: batch/v1
 metadata:
   name: elastic-backup
 spec:
-  # Add the server as an NFS volume for the pod
-  volumes:
-    - name: nfs-volume
-      nfs: 
-        # URL for the NFS server
-        server: 10.1.2.191 # Change this!
-        path: /
-  # In this container, we'll mount the NFS volume
-  # and write the date to a file inside it.
-  containers:
-    - name: elastic-backup
-      image: elastic-backup:0.1
-      # Mount the NFS volume in the container
-      volumeMounts:
+  template:
+    spec:
+      # Add the server as an NFS volume for the pod
+      volumes:
         - name: nfs-volume
-          mountPath: /var/nfs
-      env:
-      - name: PASSWORD
-        value: test
-      - name: STATE
-        value: backup
-      - name: search_path
-        vaule: indies
+          nfs: 
+            # URL for the NFS server
+            server: 10.1.2.201 # Change this!
+            path: /
+      # In this container, we'll mount the NFS volume
+      # and write the date to a file inside it.
+      containers:
+        - name: elastic-backup
+          image: elastic-backup:0.1
+          # Mount the NFS volume in the container
+          volumeMounts:
+            - name: nfs-volume
+              mountPath: /var/nfs
+          env:
+          - name: PASSWORD
+            value: test
+          - name: STATE
+            value: backup
+          - name: search_path
+            value: indies
+      restartPolicy: Never
+  backoffLimit: 4

@@ -16,7 +16,7 @@ RUN chmod +x /usr/local/bin/backup.sh
 
 RUN addgroup -S backup && adduser -S backup -G backup
 
-USER backup
+#USER backup
 #RUN mkdir -p ~/.ssh && mkdir ~/keys
 
 CMD backup.sh

@@ -11,7 +11,7 @@ spec:
     - name: nfs-volume
       nfs: 
         # URL for the NFS server
-        server: 10.1.2.188 # Change this!
+        server: 10.1.2.201 # Change this!
         path: /
   # In this container, we'll mount the NFS volume
   # and write the date to a file inside it.
