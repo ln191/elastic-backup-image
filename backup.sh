@@ -156,11 +156,11 @@ restoreSnapshot()
 }
 decrypt()
 {
-    if [ -e /var/nfs/backup-indcies.tar.gz.gpg ] 
+    if [ -e /var/nfs/backup-indices.tar.gz.gpg ] 
     then
-        gpg --batch --passphrase $PASSWORD -o backup-indcies.tar.gz -d backup-indcies.tar.gz.gpg && rm backup-indcies.tar.gz.gpg
+        gpg --batch --passphrase $PASSWORD -o backup-indices.tar.gz -d backup-indices.tar.gz.gpg && rm backup-indices.tar.gz.gpg
         
-        tar -xvzf backup-indcies.tar.gz && rm backup-indcies.tar.gz
+        tar -xvzf backup-indices.tar.gz && rm backup-indices.tar.gz
 
         echo "file decrypted"
         
@@ -172,10 +172,10 @@ decrypt()
 
 encrypt()
 {
-    tar -czvf backup-indcies.tar.gz indcies && rm -R indcies
-    gpg --batch --passphrase $PASSWORD --symmetric --cipher-algo AES256 backup-indcies.tar.gz && rm backup-indcies.tar.gz
+    tar -czvf backup-indices.tar.gz indices && rm -R indices/
+    gpg --batch --passphrase $PASSWORD --symmetric --cipher-algo AES256 backup-indices.tar.gz && rm backup-indices.tar.gz
     if [ $? -ne 0 ]; then
-        echo "Could not encrypt: indcies"
+        echo "Could not encrypt: indices"
     fi
 }
 
@@ -192,20 +192,20 @@ encrypt()
 
 # fi
 # wait for status
-# cd /var/nfs/
+cd /var/nfs/
 
-# if [ "backup" = $STATE ]; then
+if [ "backup" = $STATE ]; then
 #     echo "Running backup cmd..."
     
 
     #repofound=$(checkRepo) 
     # check encryption log file if none create one
-    #decrypt $SEARCH_PATH
+    decrypt $SEARCH_PATH
 
     # Run curator backup cmd
         # check repo exist if not create
     
-    #curator --config ./config/config.yaml ./config/backup.yaml
+    curator --config /config/config.yaml /config/backup.yaml
 
     waitForState
     success=$?
@@ -213,30 +213,14 @@ encrypt()
     if [ $success -eq 0 ]
     then
         echo "backup success"
+        encrypt $SEARCH_PATH
         exit 0
     else
         echo "backup failed"
+        encrypt $SEARCH_PATH
         exit 1
     fi
-
-    
-
-    # if [ $? -ne 0 ]; then
-    #     echo "Back up not created"
-    # fi
-        # sent snapshot cmd
-
-    # wait for status succesfull or error
-        # timeout error if to long
-
-        # if error exit with error
-
-    #encrypt $SEARCH_PATH
-    # # if no errors exit succesfull
-
-#     echo 'Successfully backup of elastic logs'
-#     exit 0
-# fi
+fi
 
 if [ "restore" = $STATE ]; then
 
@@ -246,17 +230,17 @@ if [ "restore" = $STATE ]; then
 
     # Check log file
     # decrypt files in log
-    decrypt
+    decrypt $SEARCH_PATH
     # curator send restore cmd
     curator --config /config/config.yaml /config/restore.yaml
-    if [ $? -ne 0 ]; then
-        echo "Back up not created, check db connection settings"
-        exit 1
-    fi
+    # if [ $? -ne 0 ]; then
+    #     echo "Back up not created, check db connection settings"
+    #     exit 1
+    # fi
     # wait for status 
 
     # encrypt files in indies folder
-    encrypt
+    encrypt $SEARCH_PATH
     # if status succesfull exit succesfull else error exit
 
     exit 0

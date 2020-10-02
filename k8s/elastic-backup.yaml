@@ -41,9 +41,9 @@ spec:
           - name: PASSWORD
             value: test
           - name: STATE
-            value: backup
+            value: restore
           - name: SEARCH_PATH
-            value: indcies
+            value: indices
           
       restartPolicy: Never
   backoffLimit: 4

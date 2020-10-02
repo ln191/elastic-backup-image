@@ -37,7 +37,11 @@ spec:
         path: /
   containers:
     - name: elasticsearch
-      image: my_elastic
+      image: digst_elastic
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: nfs-volume
+          mountPath: /nfs
       env:
         - name: discovery.type
           value: single-node

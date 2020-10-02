@@ -12,6 +12,8 @@ actions:
       name:
       # If indices is blank, all indices in the snapshot will be restored
       indices:
+      rename_pattern: '(.+)'
+      rename_replacement: 'restored_$1'
       wait_for_completion: True
       max_wait: 3600
       wait_interval: 10
