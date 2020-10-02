@@ -1,0 +1,32 @@
+{
+  "snapshots" : [
+    {
+      "snapshot" : "snapshot_1",
+      "repository" : "elastic",
+      "uuid" : "W3WWxzEMQ6mwxu3GNhBVQQ",
+      "state" : "SUCCESS",
+      "include_global_state" : true,
+      "shards_stats" : {
+        "initializing" : 0,
+        "started" : 0,
+        "finalizing" : 0,
+        "done" : 0,
+        "failed" : 0,
+        "total" : 0
+      },
+      "stats" : {
+        "incremental" : {
+          "file_count" : 0,
+          "size_in_bytes" : 0
+        },
+        "total" : {
+          "file_count" : 0,
+          "size_in_bytes" : 0
+        },
+        "start_time_in_millis" : 1601627421405,
+        "time_in_millis" : 0
+      },
+      "indices" : { }
+    }
+  ]
+}

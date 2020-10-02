@@ -4,7 +4,7 @@
     # curator check repo
     # check there is a log 
 # decrypt
-decrypt()
+decrypt2()
 {
     # check encryption log file if none create one
     if [ -e /var/nfs/encryptionLog.txt ]
@@ -29,7 +29,7 @@ decrypt()
     #echo "Succesfully decrypting file $1"
 }
 # encrypt
-encrypt()
+encrypt2()
 { 
     # find files to be encrypted
     ls /var/nfs/$search_path | grep -v \\.asc  > ../tempList.txt
@@ -37,7 +37,7 @@ encrypt()
     while read in 
     do 
         # sync encryption
-        gpg --batch -c --passphrase $PASSWORD --armor --symmetric --cipher-algo AES256 $in; 
+        gpg --batch -c --passphrase $PASSWORD --symmetric --cipher-algo AES256 $in; 
         echo "$in" >> /var/nfs/encryptionLog.txt
         if [ -e /var/nfs/encryptionLog.txt ]
         then
@@ -51,22 +51,179 @@ encrypt()
     rm ../tempList.txt
 }
 
-# wait for status
-cd /var/nfs/$search_path
+makeRepo()
+{
+    curl -X PUT "localhost:9200/_snapshot/my_backup?pretty" -H 'Content-Type: application/json' -d'
+    {
+        "type": "fs",
+        "settings": {
+            "location": "my_backup_location"
+        }
+    }
+    '
 
-if [ "backup" = $STATE ]; then
-    echo "Running backup cmd..."
+}
+
+checkRepo()
+{
+
+    curl -X POST "localhost:9200/_snapshot/elastic/_verify?pretty"
+
+
+    res=$(curl -X GET "localhost:9200/_snapshot/elastic?pretty" | jq '.elastic')
+    echo $res
+    if []
+    then
+        echo "repo found"
+        return 0
+    else
+        echo "could not find repo"
+        return 1
+    fi
+}
+
+
+REPO=elastic
+SNAPSHOT=snapshot_1
+
+checkSnapshotState()
+{
+    curl -X GET "elasticsearch:9200/_snapshot/$REPO/$SNAPSHOT/_status?pretty" > respondState.json
+    res=$( cat respondState.json | jq ".snapshots[].state")
+    case $res in
+        '"SUCCESS"')
+            echo "The snapshot finished and all shards were stored successfully."
+            return 0
+            ;;
+        '"FAILED"')
+            echo "The snapshot finished with an error and failed to store any data."
+            return 1
+            ;;
+        '"IN_PROGRESS"')
+            echo "The snapshot is currently running."
+            return 2
+            ;;
+        '"PARTIAL"')
+            echo "The global cluster state was stored, but data of at least one shard was not stored successfully."
+            errors=$( cat respondState.json | jq ".snapshots[].failures[]")
+            echo " Errors: $errors "
+            return 3
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    # if [ "$res" = '"SUCCESS"' ]
+    # then
+    #     echo "snapshot completed"
+    #     return 0
+    # else
+    #     echo "waiting for snapshot completion"
+    #     return 1
+    # fi 
+}
+
+waitForState()
+{
+    snap=2
+    while [ $snap -eq 2 ]
+    do
+        checkSnapshotState
+        snap=$?
+    done
+
+    return $snap
+
+}
+takeSnapshot()
+{
+    curl -X PUT "localhost:9200/_snapshot/elastic/snapshot_3?wait_for_completion=true&pretty" -H 'Content-Type: application/json' -d'
+    {
+        "indices": "-.kibana1",
+        "ignore_unavailable": true,
+        "include_global_state": false,
+        "metadata": {
+            "taken_by": "kimchy",
+            "taken_because": "backup before upgrading"
+        }
+    }
+    '
+
+}
+restoreSnapshot()
+{
+    curl -X POST "localhost:9200/_snapshot/elastic/snapshot_1/_restore?pretty"
+}
+decrypt()
+{
+    if [ -e /var/nfs/backup-indcies.tar.gz.gpg ] 
+    then
+        gpg --batch --passphrase $PASSWORD -o backup-indcies.tar.gz -d backup-indcies.tar.gz.gpg && rm backup-indcies.tar.gz.gpg
+        
+        tar -xvzf backup-indcies.tar.gz && rm backup-indcies.tar.gz
+
+        echo "file decrypted"
+        
+    else
+        echo "No file to decrypt: $1.tar.gz"
+    fi
+
+}
+
+encrypt()
+{
+    tar -czvf backup-indcies.tar.gz indcies && rm -R indcies
+    gpg --batch --passphrase $PASSWORD --symmetric --cipher-algo AES256 backup-indcies.tar.gz && rm backup-indcies.tar.gz
+    if [ $? -ne 0 ]; then
+        echo "Could not encrypt: indcies"
+    fi
+}
+
+#checkRepo
+#takeSnapshot
+#checkSnapshotState
+#restoreSnapshot
+
+# if [ $? = 0 ]
+# then
+#     echo "code 0"
+# else
+#     echo "code 1"
+
+# fi
+# wait for status
+# cd /var/nfs/
+
+# if [ "backup" = $STATE ]; then
+#     echo "Running backup cmd..."
     
+
+    #repofound=$(checkRepo) 
     # check encryption log file if none create one
-    decrypt
+    #decrypt $SEARCH_PATH
 
     # Run curator backup cmd
         # check repo exist if not create
     
-    curator --config config.yaml backup.yaml
-    if [ $? -ne 0 ]; then
-        echo "Back up not created"
+    #curator --config ./config/config.yaml ./config/backup.yaml
+
+    waitForState
+    success=$?
+
+    if [ $success -eq 0 ]
+    then
+        echo "backup success"
+        exit 0
+    else
+        echo "backup failed"
+        exit 1
     fi
+
+    
+
+    # if [ $? -ne 0 ]; then
+    #     echo "Back up not created"
+    # fi
         # sent snapshot cmd
 
     # wait for status succesfull or error
@@ -74,12 +231,12 @@ if [ "backup" = $STATE ]; then
 
         # if error exit with error
 
-    encrypt
+    #encrypt $SEARCH_PATH
     # # if no errors exit succesfull
 
-    echo 'Successfully backup of elastic logs'
-    exit 0
-fi
+#     echo 'Successfully backup of elastic logs'
+#     exit 0
+# fi
 
 if [ "restore" = $STATE ]; then
 
@@ -91,7 +248,7 @@ if [ "restore" = $STATE ]; then
     # decrypt files in log
     decrypt
     # curator send restore cmd
-    curator --config config.yaml restore.yaml
+    curator --config /config/config.yaml /config/restore.yaml
     if [ $? -ne 0 ]; then
         echo "Back up not created, check db connection settings"
         exit 1

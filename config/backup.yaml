@@ -1,0 +1,13 @@
+actions:
+  1:
+    action: snapshot
+    description: >-
+      Snapshot selected indices to 'repository' with the snapshot name or name
+      pattern in 'name'.  Use all other options as assigned
+    options:
+      repository: elastic
+      # Leaving name blank will result in the default 'curator-%Y%m%d%H%M%S'
+      name:
+      wait_for_completion: True
+      max_wait: 3600
+      wait_interval: 10

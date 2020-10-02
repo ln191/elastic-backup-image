@@ -1,0 +1,43 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: elasticsearch
+spec:
+  selector:
+    role: elastic
+  ports:
+    # Open the ports required by the NFS server
+    # Port 2049 for TCP
+    - name: tcp-9200
+      port: 9200
+      protocol: TCP
+
+    # Port 111 for UDP
+    - name: tcp-9300
+      port: 9300
+      protocol: TCP
+
+---
+
+# Run the NFS server image in a pod that is
+# exposed by the service.
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: elasticsearch
+  labels:
+    role: elastic
+spec:
+  volumes:
+    - name: nfs-volume
+      nfs: 
+        # URL for the NFS server
+        server: 10.1.3.50 # Change this!
+        path: /
+  containers:
+    - name: elasticsearch
+      image: my_elastic
+      env:
+        - name: discovery.type
+          value: single-node

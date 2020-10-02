@@ -1,0 +1,13 @@
+{
+  "error" : {
+    "root_cause" : [
+      {
+        "type" : "snapshot_missing_exception",
+        "reason" : "[elastic:_current] is missing"
+      }
+    ],
+    "type" : "snapshot_missing_exception",
+    "reason" : "[elastic:_current] is missing"
+  },
+  "status" : 404
+}

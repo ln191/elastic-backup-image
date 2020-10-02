@@ -1,0 +1,21 @@
+actions:
+  1:
+    action: restore
+    description: >-
+      Restore all indices in the most recent snapshot with state SUCCESS.  Wait
+      for the restore to complete before continuing.  Do not skip the repository
+      filesystem access check.  Use the other options to define the index/shard
+      settings for the restore.
+    options:
+      repository:
+      # If name is blank, the most recent snapshot by age will be selected
+      name:
+      # If indices is blank, all indices in the snapshot will be restored
+      indices:
+      wait_for_completion: True
+      max_wait: 3600
+      wait_interval: 10
+    filters:
+    - filtertype: state
+      state: SUCCESS
+      exclude:
