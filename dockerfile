@@ -1,11 +1,10 @@
 FROM alpine
 
-LABEL version="0.3" type="elastic-backup-retore"
+LABEL version="0.5" type="elastic-backup-retore"
 
 RUN apk update
 RUN apk upgrade
 RUN apk add py3-pip
-#RUN apk add openssh
 RUN apk add gnupg
 RUN apk add jq
 RUN apk add curl
@@ -15,10 +14,5 @@ RUN pip install elasticsearch-curator
 
 COPY backup.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/backup.sh
-
-#RUN addgroup -S backup && adduser -S backup -G backup
-
-#USER backup
-#RUN mkdir -p ~/.ssh && mkdir ~/keys
 
 CMD backup.sh
