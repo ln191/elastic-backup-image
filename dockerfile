@@ -1,6 +1,6 @@
 FROM alpine
 
-LABEL version="0.5" type="elastic-backup-retore"
+LABEL version="1.0" type="elastic-backup-retore"
 
 RUN apk update
 RUN apk upgrade

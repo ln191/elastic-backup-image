@@ -2,19 +2,11 @@
 
 makeRepo()
 {
-    if curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1?pretty" -H 'Content-Type: application/json' -d'
-    {
-        "type": "fs",
-        "settings": {
-            "compress": "true",
-            "location": "/nfs"
-        }
-    }
-    ' > respondState.json
+    curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "/nfs" } }' > respondState.json 
 
-    
-    res=$(cat respondState.json | jq ".acknowledged")
-    if [ res = "true"]
+    res=$( cat respondState.json | jq ".acknowledged" )
+    echo $res
+    if [ "true" = $res ]
     then
         echo "repo created: $1"
         return 0
@@ -26,7 +18,8 @@ makeRepo()
 
 checkRepo()
 {
-    if curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1" | jq -e '.'$1'' > /dev/null
+    res=$(curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1" | jq 'has("'$1'")')
+    if [ $res = "true" ] 
     then
         echo "repo found: $1"
         return 0
@@ -117,7 +110,7 @@ if [ "backup" = $STATE ]; then
     if [ $? -ne 0 ]
     then
         makeRepo $REPO
-        if [$? -ne 0]
+        if [ $? -ne 0 ]
         then
             exit 1
         fi
@@ -139,8 +132,8 @@ if [ "backup" = $STATE ]; then
         fi
         exit 0
     else
-        echo "backup failed, re-encrypt logs"
-        if ["true" = $ENCRYPTION ]
+        echo "backup failed"
+        if [ "true" = $ENCRYPTION ]
         then
             encrypt $SEARCH_PATH
         fi
