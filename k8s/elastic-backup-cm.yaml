@@ -24,7 +24,7 @@ data:
         options:
           repository: elastic
           # Leaving name blank will result in the default 'curator-%Y%m%d%H%M%S'
-          name: logs-%Y%m%d%H%M%S
+          name: logs-%Y-%m-%d-%H-%M
           wait_for_completion: True
           max_wait: 3600
           wait_interval: 10

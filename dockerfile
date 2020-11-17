@@ -15,4 +15,8 @@ RUN pip install elasticsearch-curator
 COPY backup.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/backup.sh
 
+RUN addgroup -S backup && adduser -S backup -G backup
+
+USER backup
+
 CMD backup.sh
