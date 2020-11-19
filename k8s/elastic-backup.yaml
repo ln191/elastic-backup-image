@@ -13,7 +13,7 @@ spec:
         - name: nfs-volume
           nfs: 
             # URL for the NFS server
-            server: 10.1.4.182 # Change this!
+            server: 10.1.5.146 # Change this!
             path: /
       # In this container, we'll mount the NFS volume
       # and write the date to a file inside it.
@@ -27,9 +27,11 @@ spec:
               path: "backup.yaml"
             - key: "restore.yaml"
               path: "restore.yaml"
+            - key: "delete.yaml"
+              path: "delete.yaml"
       containers:
         - name: elastic-backup
-          image: elastic-backup:1.3
+          image: elastic-backup:2.0
           # Mount the NFS volume in the container
           volumeMounts:
             - name: nfs-volume

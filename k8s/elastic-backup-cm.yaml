@@ -59,3 +59,25 @@ data:
         - filtertype: state
           state: SUCCESS
           exclude:
+
+  delete.yaml: |
+    ---
+    actions:
+      1:
+        action: delete_snapshots
+        description: "Delete selected snapshots from 'repository'"
+        options:
+          repository: elastic
+          retry_interval: 120
+          retry_count: 3
+        filters:
+          - filtertype: pattern
+            kind: prefix
+            value: audit-
+            exclude: True
+          - filtertype: age
+            source: creation_date
+            direction: older
+            unit: minutes
+            unit_count: 1
+            exclude: False

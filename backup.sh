@@ -100,6 +100,11 @@ encrypt()
         echo "folder encrypted: $1"
     fi
 }
+deleteOldSnapshots()
+{
+    echo 'Deleting snapshot older than '$OLDERTHAN' days'
+    
+}
 
 cd /var/nfs/
 
@@ -126,10 +131,14 @@ if [ "backup" = $STATE ]; then
     if [ $? -eq 0 ]
     then
         echo "backup success"
+        echo 'Deleting old snapshot'
+        curator --config /config/config.yaml /config/delete.yaml
+        
         if [ "true" = $ENCRYPTION ]
         then
             encrypt $SEARCH_PATH
         fi
+         
         exit 0
     else
         echo "backup failed"
