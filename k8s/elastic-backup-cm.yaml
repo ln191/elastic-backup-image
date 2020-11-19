@@ -70,6 +70,7 @@ data:
           repository: elastic
           retry_interval: 120
           retry_count: 3
+          ignore_empty_list: True
         filters:
           - filtertype: pattern
             kind: prefix
