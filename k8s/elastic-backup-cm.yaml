@@ -22,7 +22,7 @@ data:
           Snapshot selected indices to 'repository' with the snapshot name or name
           pattern in 'name'.  Use all other options as assigned
         options:
-          repository: elastic
+          repository: elastic-placeholder
           # Leaving name blank will result in the default 'curator-%Y%m%d%H%M%S'
           name: logs-%Y-%m-%d-%H-%M
           wait_for_completion: True

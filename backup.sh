@@ -1,30 +1,34 @@
 #!/bin/sh
 
+date=$(date +'%Y-%m-%d')
+
 makeRepo()
 {
-    curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "/nfs" } }' > respondState.json 
+    mkdir "$2-$date" && chmod -R 777 "$2-$date"/
+
+    curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1-$date?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "'$2'-'$date'" } }' > respondState.json 
 
     res=$( cat respondState.json | jq ".acknowledged" )
     echo $res
     if [ "true" = $res ]
     then
-        echo "repo created: $1"
+        echo "repo created: $1-$date"
         return 0
     else
-        echo "ERROR: could not create repo: $1"
+        echo "ERROR: could not create repo: $1-$date"
         return 1
     fi
 }
 
 checkRepo()
 {
-    res=$(curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1" | jq 'has("'$1'")')
+    res=$(curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1-$date" | jq 'has("'$1'-'$date'")')
     if [ $res = "true" ] 
     then
-        echo "repo found: $1"
+        echo "repo found: $1-$date"
         return 0
     else
-        echo "ERROR: could not find repo: $1"
+        echo "ERROR: could not find repo: $1-$date"
         return 1
     fi
 }
@@ -73,16 +77,16 @@ waitForState()
 
 decrypt()
 {
-    if [ -e /var/nfs/backup-$1.tar.gz.gpg ] 
+    if [ -e /var/nfs/$2/backup-$1.tar.gz.gpg ] 
     then
-        gpg --batch --quiet --passphrase $PASSWORD -o backup-$1.tar.gz -d backup-$1.tar.gz.gpg && rm backup-$1.tar.gz.gpg
+        gpg --batch --quiet --passphrase $PASSWORD -o $2/backup-$1.tar.gz -d $2/backup-$1.tar.gz.gpg && rm $2/backup-$1.tar.gz.gpg
         
         if [ $? -ne 0 ]; then
             echo "Could not decrypt: backup-$1.tar.gz.gpg"
         else
             echo "file decrypted: backup-$1.tar.gz.gpg "
         fi
-        tar -xzf backup-$1.tar.gz && rm backup-$1.tar.gz
+        tar -xzf $2/backup-$1.tar.gz && rm $2/backup-$1.tar.gz
         
     else
         echo "Error:  Could not find file backup-$1.tar.gz.glspg to decrypt"
@@ -92,8 +96,8 @@ decrypt()
 
 encrypt()
 {
-    tar -czf backup-$1.tar.gz $1 && rm -R $1
-    gpg --batch --quiet --passphrase $PASSWORD --symmetric --cipher-algo AES256 backup-$1.tar.gz && rm backup-$1.tar.gz
+    tar -czf $2/backup-$1.tar.gz $2/$1 && rm -R $2/$1
+    gpg --batch --quiet --passphrase $PASSWORD --symmetric --cipher-algo AES256 $2/backup-$1.tar.gz && rm $2/backup-$1.tar.gz
     if [ $? -ne 0 ]; then
         echo "Could not encrypt: $1"
     else
@@ -114,19 +118,23 @@ if [ "backup" = $STATE ]; then
     checkRepo $REPO
     if [ $? -ne 0 ]
     then
-        makeRepo $REPO
+        makeRepo $REPO $STOARGEPATH
         if [ $? -ne 0 ]
         then
             exit 1
         fi
     fi
-
+    rep="$REPO-$date"
     if [ "true" = $ENCRYPTION ]
     then
-        decrypt $SEARCH_PATH
+        decrypt $SEARCH_PATH $rep
     fi
     
-    curator --config /config/config.yaml /config/backup.yaml
+    cp /config/backup.yaml currentBackup.yaml
+    
+    sed -i "s/\belastic-placeholder\b/$rep/g" currentBackup.yaml
+
+    curator --config /config/config.yaml currentBackup.yaml
 
     if [ $? -eq 0 ]
     then
@@ -136,7 +144,7 @@ if [ "backup" = $STATE ]; then
         
         if [ "true" = $ENCRYPTION ]
         then
-            encrypt $SEARCH_PATH
+            encrypt $SEARCH_PATH $rep
         fi
          
         exit 0
@@ -144,7 +152,7 @@ if [ "backup" = $STATE ]; then
         echo "backup failed"
         if [ "true" = $ENCRYPTION ]
         then
-            encrypt $SEARCH_PATH
+            encrypt $SEARCH_PATH $rep
         fi
         exit 1
     fi
