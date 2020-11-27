@@ -2,6 +2,9 @@
 
 date=$(date +'%Y-%m-%d')
 
+rep="$REPO-$date"
+restoreReo="$REPO-"
+
 makeRepo()
 {
     mkdir "$2-$date" && chmod -R 777 "$2-$date"/
@@ -104,11 +107,6 @@ encrypt()
         echo "folder encrypted: $1"
     fi
 }
-deleteOldSnapshots()
-{
-    echo 'Deleting snapshot older than '$OLDERTHAN' days'
-    
-}
 
 cd /var/nfs/
 
@@ -118,23 +116,25 @@ if [ "backup" = $STATE ]; then
     checkRepo $REPO
     if [ $? -ne 0 ]
     then
-        makeRepo $REPO $STOARGEPATH
+        makeRepo $REPO $REPOMOUNT
         if [ $? -ne 0 ]
         then
             exit 1
         fi
     fi
-    rep="$REPO-$date"
+    
     if [ "true" = $ENCRYPTION ]
     then
         decrypt $SEARCH_PATH $rep
     fi
     
     cp /config/backup.yaml currentBackup.yaml
-    
-    sed -i "s/\belastic-placeholder\b/$rep/g" currentBackup.yaml
+
+    sed -r "s/^(\s*repository\s*:\s*).*/\1$rep/" -i currentBackup.yaml
 
     curator --config /config/config.yaml currentBackup.yaml
+
+    rm currentBackup.yaml
 
     if [ $? -eq 0 ]
     then
@@ -170,24 +170,30 @@ if [ "restore" = $STATE ]; then
 
     if [ "true" = $ENCRYPTION ]
     then
-        decrypt $SEARCH_PATH
+        decrypt $SEARCH_PATH $restoreRep
     fi
 
+    cp /config/restore.yaml currentRestore.yaml
+
+    sed -r "s/^(\s*repository\s*:\s*).*/\1$restoreRep/" -i currentRestore.yaml
+
     curator --config /config/config.yaml /config/restore.yaml
+
+    rm currentRestore.yaml
 
     if [ $? -eq 0 ]
     then
         echo "Restore success"
         if [ "true" = $ENCRYPTION ]
         then
-            encrypt $SEARCH_PATH
+            encrypt $SEARCH_PATH $restoreRep
         fi
         exit 0
     else
         echo "restore failed, re-encrypt logs"
         if [ "true" = $ENCRYPTION ]
         then
-            encrypt $SEARCH_PATH
+            encrypt $SEARCH_PATH $restoreRep
         fi
         exit 1
     fi

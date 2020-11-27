@@ -13,7 +13,7 @@ spec:
         - name: nfs-volume
           nfs: 
             # URL for the NFS server
-            server: 10.1.5.158 # Change this!
+            server: 10.1.6.52 # Change this!
             path: /
       # In this container, we'll mount the NFS volume
       # and write the date to a file inside it.
@@ -54,7 +54,7 @@ spec:
             value: elastic
           - name: ENCRYPTION
             value: "true"
-          - name: STOARGEPATH
+          - name: REPOMOUNT
             value: elastic
           
       restartPolicy: Never
