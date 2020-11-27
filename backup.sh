@@ -3,7 +3,7 @@
 date=$(date +'%Y-%m-%d')
 
 rep="$REPO-$date"
-restoreReo="$REPO-"
+restoreRep="$REPO-"
 
 makeRepo()
 {
@@ -108,7 +108,30 @@ encrypt()
     fi
 }
 
+restoreList(){
+    for i in $(echo $1 | sed "s/,/ /g")
+    do
+        echo "$i"
+        sed -r "s/^(\s*repository\s*:\s*).*/\1$i/" -i currentRestore.yaml
+        sed -r "s/^(\s*name\s*:\s*).*/\1*/" -i currentRestore.yaml
+
+        curator --config /config/config.yaml /config/restore.yaml
+        
+    done
+}
+rangeOrList(){
+   tmp=$(echo $RESTOREINDICES | grep '>' )
+   echo $tmp
+   if [ -z $tmp ];then
+      echo "is list"
+   else
+      echo "is range"
+   fi
+}
+
 cd /var/nfs/
+
+rangeOrList
 
 if [ "backup" = $STATE ]; then
     echo "Running snapshot cmd..."
@@ -176,6 +199,7 @@ if [ "restore" = $STATE ]; then
     cp /config/restore.yaml currentRestore.yaml
 
     sed -r "s/^(\s*repository\s*:\s*).*/\1$restoreRep/" -i currentRestore.yaml
+    sed -r "s/^(\s*name\s*:\s*).*/\1$RESTOREINDICES/" -i currentRestore.yaml
 
     curator --config /config/config.yaml /config/restore.yaml
 
