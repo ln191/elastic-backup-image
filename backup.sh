@@ -131,7 +131,7 @@ rangeOrList(){
 
 cd /var/nfs/
 
-rangeOrList
+#rangeOrList
 
 if [ "backup" = $STATE ]; then
     echo "Running snapshot cmd..."
