@@ -41,6 +41,30 @@ data:
           unit_count: 1
           exclude: True
   
+  customeBackup.yaml: |
+    ---
+    actions:
+      1:
+        action: snapshot
+        description: >-
+          Snapshot selected indices to 'repository' with the snapshot name or name
+          pattern in 'name'.  Use all other options as assigned
+        options:
+          repository: failoverRepo
+          # Leaving name blank will result in the default 'curator-%Y%m%d%H%M%S'
+          name: logs-2020-11-26
+          wait_for_completion: True
+          max_wait: 3600
+          wait_interval: 10
+        filters:
+        - filtertype: pattern
+          kind: prefix
+          value: restored-
+          exclude: true
+        - filtertype: pattern
+          kind: suffix
+          value: customeDate
+  
   restore.yaml: |
     ---
     actions:

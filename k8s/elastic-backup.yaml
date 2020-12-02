@@ -13,7 +13,7 @@ spec:
         - name: nfs-volume
           nfs: 
             # URL for the NFS server
-            server: 10.1.6.52 # Change this!
+            server: 10.1.6.193 # Change this!
             path: /
       # In this container, we'll mount the NFS volume
       # and write the date to a file inside it.
@@ -29,9 +29,11 @@ spec:
               path: "restore.yaml"
             - key: "delete.yaml"
               path: "delete.yaml"
+            - key: "customeBackup.yaml"
+              path: "customeBackup.yaml"
       containers:
         - name: elastic-backup
-          image: elastic-backup:2.1
+          image: elastic-backup:2.1.1
           # Mount the NFS volume in the container
           volumeMounts:
             - name: nfs-volume
@@ -43,7 +45,7 @@ spec:
           - name: PASSWORD
             value: test
           - name: STATE
-            value: backup
+            value: restore
           - name: ELASTIC_HOST
             value: elasticsearch
           - name: PORT
@@ -52,12 +54,14 @@ spec:
             value: indices
           - name: REPO
             value: elastic
+          - name: DATE
+            value: "2020-12-01"
           - name: ENCRYPTION
             value: "true"
           - name: REPOMOUNT
             value: elastic
           - name: RESTOREINDICES
-            value: "elastic-2020-11-26 > elastic-2020-11-26"
+            value: "2020-11-26,2020-12-02"
           
       restartPolicy: Never
   backoffLimit: 4

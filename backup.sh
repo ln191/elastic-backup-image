@@ -1,37 +1,52 @@
-#!/bin/sh
+#!/bin/bash
 
 date=$(date +'%Y-%m-%d')
 
 rep="$REPO-$date"
 restoreRep="$REPO-"
 
+customeBackup="false"
+
+selectRepo(){
+    if [ -z "$DATE" ]
+    then
+        echo "Repo selected: $rep"
+    else
+        rep="$REPO-$DATE"
+        date=$DATE
+        customeBackup="true"
+        echo "Repo selected: $rep"
+    fi
+    
+}
+
 makeRepo()
 {
-    mkdir "$2-$date" && chmod -R 777 "$2-$date"/
-
-    curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1-$date?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "'$2'-'$date'" } }' > respondState.json 
+    #mkdir "$2-$date" && chmod -R 777 "$2-$date"/
+    mkdir "$1" && chmod -R 777 "$1"/
+    curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "'$1'" } }' > respondState.json 
 
     res=$( cat respondState.json | jq ".acknowledged" )
     echo $res
     if [ "true" = $res ]
     then
-        echo "repo created: $1-$date"
+        echo "repo created: $1"
         return 0
     else
-        echo "ERROR: could not create repo: $1-$date"
+        echo "ERROR: could not create repo: $1"
         return 1
     fi
 }
 
 checkRepo()
 {
-    res=$(curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1-$date" | jq 'has("'$1'-'$date'")')
+    res=$(curl -X GET "$ELASTIC_HOST:$PORT/_snapshot/$1" | jq 'has("'$1'")')
     if [ $res = "true" ] 
     then
-        echo "repo found: $1-$date"
+        echo "repo found: $1"
         return 0
     else
-        echo "ERROR: could not find repo: $1-$date"
+        echo "ERROR: could not find repo: $1"
         return 1
     fi
 }
@@ -108,38 +123,107 @@ encrypt()
     fi
 }
 
-restoreList(){
-    for i in $(echo $1 | sed "s/,/ /g")
-    do
-        echo "$i"
-        sed -r "s/^(\s*repository\s*:\s*).*/\1$i/" -i currentRestore.yaml
-        sed -r "s/^(\s*name\s*:\s*).*/\1*/" -i currentRestore.yaml
+restore()
+{
 
-        curator --config /config/config.yaml /config/restore.yaml
+    cp /config/restore.yaml currentRestore.yaml
+    sed -r "s/^(\s*repository\s*:\s*).*/\1$1/" -i currentRestore.yaml
+    sed -r "s/^(\s*name\s*:\s*).*/\1/" -i currentRestore.yaml
+
+    if [ "true" = $ENCRYPTION ]
+    then
+        decrypt $SEARCH_PATH $1
+    fi
+
+    curator --config /config/config.yaml currentRestore.yaml
+
+    if [ $? -eq 0 ] 
+    then
+        echo "Restore success"
+        if [ "true" = $ENCRYPTION ]
+        then
+            encrypt $SEARCH_PATH $1
+        fi 
+    else
+        echo "restore failed, re-encrypt logs"
+        if [ "true" = $ENCRYPTION ]
+        then
+            encrypt $SEARCH_PATH $1
+        fi
+    fi
+
+    rm currentRestore.yaml
+}
+
+restoreList()
+{
+    IFS=',' read -ra ary <<< $1
+    for i in "${ary[@]}"
+    do
+        echo $i
+        checkRepo $i
+        if [ $? -ne 0 ]
+        then
+            makeRepo $i
+            if [ $? -ne 0 ]
+            then
+                exit 1
+            fi
+        fi
         
+        restore "$REPO-$i"
     done
 }
-rangeOrList(){
+
+restoreRange()
+{
+    IFS='>' read -ra ary <<< $1
+    d=$(date -d ${ary[0]} +%s)
+    enddate=$(date -d ${ary[1]} +%s)
+    #change dates to second
+    while [ $d -le ${enddate} ]; do 
+        echo $d
+        df=$(date -d @$d +%Y-%m-%d)
+        echo $df
+        checkRepo "$REPO-$df"
+        if [ $? -ne 0 ]
+        then
+            makeRepo "$REPO-$df"
+            if [ $? -ne 0 ]
+            then
+                exit 1
+            fi
+        fi
+        
+        restore "$REPO-$df"
+        d=$(( $d + 86400 ))
+        #Unix timestamp don't include leap seconds, so 1 day equals always exactly 86400 seconds.
+    done
+}
+restoreRangeOrList()
+{
    tmp=$(echo $RESTOREINDICES | grep '>' )
    echo $tmp
    if [ -z $tmp ];then
       echo "is list"
+      restoreList $RESTOREINDICES
    else
       echo "is range"
+      restoreRange $RESTOREINDICES
    fi
 }
 
-cd /var/nfs/
 
-#rangeOrList
+
+cd /var/nfs/
 
 if [ "backup" = $STATE ]; then
     echo "Running snapshot cmd..."
-    
-    checkRepo $REPO
+    selectRepo
+    checkRepo $rep
     if [ $? -ne 0 ]
     then
-        makeRepo $REPO $REPOMOUNT
+        makeRepo $rep $REPOMOUNT
         if [ $? -ne 0 ]
         then
             exit 1
@@ -150,14 +234,26 @@ if [ "backup" = $STATE ]; then
     then
         decrypt $SEARCH_PATH $rep
     fi
-    
-    cp /config/backup.yaml currentBackup.yaml
+    if [ "true" = $customeBackup ]
+    then
+        cp /config/customeBackup.yaml currentBackup.yaml
 
-    sed -r "s/^(\s*repository\s*:\s*).*/\1$rep/" -i currentBackup.yaml
+        sed -r "s/^(\s*repository\s*:\s*).*/\1$rep/" -i currentBackup.yaml
+        sed -r "s/^(\s*name\s*:\s*).*/\1$rep/" -i currentBackup.yaml
+        sed -r "s/customeDate/-$DATE/" -i currentBackup.yaml
+        
+        curator --config /config/config.yaml currentBackup.yaml
 
-    curator --config /config/config.yaml currentBackup.yaml
+        rm currentBackup.yaml
+    else
+        cp /config/backup.yaml currentBackup.yaml
 
-    rm currentBackup.yaml
+        sed -r "s/^(\s*repository\s*:\s*).*/\1$rep/" -i currentBackup.yaml
+
+        curator --config /config/config.yaml currentBackup.yaml
+
+        rm currentBackup.yaml
+    fi
 
     if [ $? -eq 0 ]
     then
@@ -185,43 +281,9 @@ if [ "restore" = $STATE ]; then
 
     echo "Running Restore cmd..."
 
-    checkRepo $REPO
-    if [ $? -ne 0 ]
-    then
-        exit 1
-    fi
-
-    if [ "true" = $ENCRYPTION ]
-    then
-        decrypt $SEARCH_PATH $restoreRep
-    fi
-
-    cp /config/restore.yaml currentRestore.yaml
-
-    sed -r "s/^(\s*repository\s*:\s*).*/\1$restoreRep/" -i currentRestore.yaml
-    sed -r "s/^(\s*name\s*:\s*).*/\1$RESTOREINDICES/" -i currentRestore.yaml
-
-    curator --config /config/config.yaml /config/restore.yaml
-
-    rm currentRestore.yaml
-
-    if [ $? -eq 0 ]
-    then
-        echo "Restore success"
-        if [ "true" = $ENCRYPTION ]
-        then
-            encrypt $SEARCH_PATH $restoreRep
-        fi
-        exit 0
-    else
-        echo "restore failed, re-encrypt logs"
-        if [ "true" = $ENCRYPTION ]
-        then
-            encrypt $SEARCH_PATH $restoreRep
-        fi
-        exit 1
-    fi
-
+    restoreRangeOrList
+    
+    exit 0
 fi
 
 echo " invalid ENV STATE must be set to backup or restore"
