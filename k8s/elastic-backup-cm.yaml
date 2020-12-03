@@ -107,9 +107,9 @@ data:
             kind: prefix
             value: audit-
             exclude: True
-          - filtertype: age
-            source: creation_date
-            direction: older
-            unit: minutes
-            unit_count: 1
-            exclude: False
+          # - filtertype: age
+          #   source: creation_date
+          #   direction: older
+          #   unit: minutes
+          #   unit_count: 1
+          #   exclude: False

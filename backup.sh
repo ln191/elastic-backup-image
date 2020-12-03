@@ -3,7 +3,6 @@
 date=$(date +'%Y-%m-%d')
 
 rep="$REPO-$date"
-restoreRep="$REPO-"
 
 customeBackup="false"
 
@@ -20,10 +19,22 @@ selectRepo(){
     
 }
 
+deleteRepo(){
+     curl -X DELETE "$ELASTIC_HOST:$PORT/_snapshot/$1" > respondState.json 
+
+    res=$( cat respondState.json | jq ".acknowledged" )
+    echo $res
+    if [ "true" = $res ]
+    then
+        echo "repo deleted: $1"
+        return 0
+    else
+        echo "ERROR: could not delete repo: $1"
+        return 1
+    fi
+}
 makeRepo()
 {
-    #mkdir "$2-$date" && chmod -R 777 "$2-$date"/
-    mkdir "$1" && chmod -R 777 "$1"/
     curl -X PUT "$ELASTIC_HOST:$PORT/_snapshot/$1?pretty" -H 'Content-Type: application/json' -d' { "type": "fs","settings": { "compress": "true", "location": "'$1'" } }' > respondState.json 
 
     res=$( cat respondState.json | jq ".acknowledged" )
@@ -213,7 +224,18 @@ restoreRangeOrList()
    fi
 }
 
-
+delete()
+{
+    if [ "true" = $DELETEOLDBACKUPS ]; then
+        echo 'Delete backups older than '$OLDERTHAN' days'
+        find /var/nfs/* -type d -mtime +$OLDERTHAN -print -exec rm -rf {} \;
+        current=$(date +%s)
+        older=$((86400 * $OLDERTHAN))
+        old=$(( $current - $older ))
+        echo "delete repo: $(date -d @$old +%Y-%m-%d)"
+        deleteRepo "$REPO-$(date -d @$old +%Y-%m-%d)" 
+    fi
+}
 
 cd /var/nfs/
 
@@ -223,7 +245,8 @@ if [ "backup" = $STATE ]; then
     checkRepo $rep
     if [ $? -ne 0 ]
     then
-        makeRepo $rep $REPOMOUNT
+        mkdir "$rep" && chmod -R 777 "$rep"/
+        makeRepo $rep
         if [ $? -ne 0 ]
         then
             exit 1
@@ -258,8 +281,7 @@ if [ "backup" = $STATE ]; then
     if [ $? -eq 0 ]
     then
         echo "backup success"
-        echo 'Deleting old snapshot'
-        curator --config /config/config.yaml /config/delete.yaml
+        delete 
         
         if [ "true" = $ENCRYPTION ]
         then

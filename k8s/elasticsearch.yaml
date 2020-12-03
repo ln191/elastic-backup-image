@@ -33,7 +33,7 @@ spec:
     - name: nfs-volume
       nfs: 
         # URL for the NFS server
-        server: 10.1.6.193 # Change this!
+        server:  10.1.7.48 # Change this!
         path: /
   containers:
     - name: elasticsearch
