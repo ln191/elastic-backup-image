@@ -1,6 +1,6 @@
 FROM alpine
 
-LABEL version="2.0" type="elastic-backup-retore"
+LABEL version="2.2" type="elastic-backup-retore"
 
 # change to single line
 RUN apk update && apk upgrade
